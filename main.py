@@ -62,6 +62,29 @@ def translator(state: State) -> dict[str, dict[Lang, str]]:
     return {"translations": result.translations}
 
 
+class ReviserOutputError(Exception):
+    """Raised when the model didn't return a usable revised text."""
+
+
+class ReviserOutput(BaseModel):
+    revised_text: str = Field(
+        description="The polished, idiomatic rewrite of the input text."
+    )
+
+
+def reviser(state: State) -> dict[str, str]:
+    text = state["raw_text"]
+    lang = state["input_lang"]
+    result = llm.with_structured_output(ReviserOutput).invoke(
+        f"The following text is written in {LANG_NAMES[lang]}. Rewrite it in an "
+        "idiomatic, native-sounding way, keeping the original meaning. Only output "
+        f"the rewritten text.\n\nText: {text}"
+    )
+    if not result.revised_text.strip():
+        raise ReviserOutputError("reviser returned empty text")
+    return {"revised_text": result.revised_text}
+
+
 def route_language(state: State) -> list[Literal["translator", "reviser"]]:
     if state["input_lang"] == NATIVE_LANG:
         return ["translator"]
@@ -76,18 +99,28 @@ def main():
         translator,
         retry_policy=RetryPolicy(max_attempts=3, retry_on=(TranslationKeyError,)),
     )
+    graph.add_node(
+        "reviser",
+        reviser,
+        retry_policy=RetryPolicy(max_attempts=3, retry_on=(ReviserOutputError,)),
+    )
     graph.add_edge(START, "detect_language")
     graph.add_conditional_edges("detect_language", route_language)
     graph.add_edge("translator", END)
+    graph.add_edge("reviser", END)
     compiled = graph.compile()
 
-    # for update in compiled.stream({"raw_text": "你好，世界"}, stream_mode="updates"):
-    #     print(update)
+    for update in compiled.stream(
+        {"raw_text": "How do you be me?"}, stream_mode="updates"
+    ):
+        print(update)
 
-    result = compiled.invoke(
-        {"raw_text": "我知道这个世界变化很快，我们需要不停学习才能追赶他"}
-    )
-    print(result)
+    # raw_text = "How do you be me?"
+    # if not raw_text.strip():
+    #     raise ValueError("raw_text must not be blank")
+
+    # result = compiled.invoke({"raw_text": raw_text})
+    # print(result)
 
 
 if __name__ == "__main__":
