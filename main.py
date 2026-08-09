@@ -12,7 +12,7 @@ load_dotenv()
 
 # ponytail: temperature=0 全局共用，等写 reviser 时如果想要更"有创意"的改写，
 # 再给 reviser 单开一个更高温度的 llm 实例，现在没必要拆
-llm = ChatOpenRouter(model="qwen/qwen3.7-flash", temperature=0)
+llm = ChatOpenRouter(model="openai/gpt-5.6-luna", temperature=0)
 
 Lang = Literal["zh", "en", "de"]  # 母语 + 目标语言 list，三处共用同一份取值
 LANG_NAMES: dict[Lang, str] = {"zh": "Chinese", "en": "English", "de": "German"}
