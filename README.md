@@ -16,3 +16,20 @@ state
 config
 - 输出语言 list
 - 确认语言 literal
+
+```mermaid
+flowchart TD
+    Start([start])
+    LangDetect[语言识别器]
+    Router{路由器}
+    Translator[翻译器]
+    Reviser[修改器]
+    Aggregator[整合输出器]
+    End([end])
+
+    Start --> LangDetect --> Router
+    Router --> Translator --> Aggregator
+    Router -- 非母语 --> Reviser --> Aggregator
+    Aggregator --> End
+
+```

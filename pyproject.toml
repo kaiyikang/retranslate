@@ -4,5 +4,6 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "langchain-openrouter>=0.2.7",
     "langgraph>=1.2.10",
 ]
