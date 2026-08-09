@@ -1,9 +1,14 @@
+import sys
 from typing import Literal, NotRequired, TypedDict
 
+from dotenv import load_dotenv
 from langchain_openrouter import ChatOpenRouter
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import RetryPolicy
 from pydantic import BaseModel, Field
+
+# ponytail: 独立加载 .env，不依赖调用方（比如 Raycast）的 shell 环境有没有这个变量
+load_dotenv()
 
 # ponytail: temperature=0 全局共用，等写 reviser 时如果想要更"有创意"的改写，
 # 再给 reviser 单开一个更高温度的 llm 实例，现在没必要拆
@@ -126,17 +131,9 @@ def main():
     graph.add_edge("aggregator", END)
     compiled = graph.compile()
 
-    # for update in compiled.stream(
-    #     {
-    #         "raw_text": "Ich habe die Code restruktuiert, daraufhin kannst du das weiter machen."
-    #     },
-    #     stream_mode="updates",
-    # ):
-    #     print(update)
-
-    raw_text = "revised text"
-    if not raw_text.strip():
-        raise ValueError("raw_text must not be blank")
+    if len(sys.argv) < 2 or not sys.argv[1].strip():
+        raise ValueError("usage: main.py <raw_text>, raw_text must not be blank")
+    raw_text = sys.argv[1]
 
     result = compiled.invoke({"raw_text": raw_text})
     print(result["final_output"])

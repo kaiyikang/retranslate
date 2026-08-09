@@ -12,3 +12,6 @@ llms.txt
 .venv/
 uv.lock
 .python-version
+
+# secrets
+.env
