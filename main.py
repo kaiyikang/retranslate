@@ -100,7 +100,7 @@ def aggregator(state: State) -> dict[str, str]:
     output = dict(state["translations"])
     if "revised_text" in state:
         output["revised_text"] = state["revised_text"]
-    final_output = "\n\n".join(f"{key}\n{value}" for key, value in output.items())
+    final_output = "\n\n".join(f"{value}" for key, value in output.items())
     return {"final_output": final_output}
 
 
