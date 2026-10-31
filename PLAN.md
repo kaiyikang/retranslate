@@ -11,17 +11,17 @@ DeepL 简化版，单页面、快。典型场景：游戏中 Cmd+Tab 切过来 �
   - `GET/POST/DELETE /api/saved`：保存条目增删查
 - **存储**：D1。
 - **鉴权**：Cloudflare Access（Zero Trust，≤50 人免费）挡在 Worker 前，代码里不写登录流程。
-  - Worker 校验 `Cf-Access-Jwt-Assertion` 的签名（WebCrypto，约 30 行），从中取邮箱作为 `user_id`；所有 SQL 都带 `WHERE user_id = ?`。（实现时相比原计划多了这一步：只信 `Cf-Access-Authenticated-User-Email` 头的话，一旦 Access 被误关，请求头可以伪造；校验签名能保证这种情况下请求被拒绝。）
+  - Worker 校验 `Cf-Access-Jwt-Assertion` 的签名、iss、aud、exp（WebCrypto，约 30 行；不用 `ctx.access`，因为官方文档说配置了 Static Assets 时它不会传给 Worker），从中取邮箱作为 `user_id`；所有 SQL 都带 `WHERE user_id = ?`。（实现时相比原计划多了这一步：只信 `Cf-Access-Authenticated-User-Email` 头的话，一旦 Access 被误关，请求头可以伪造；校验签名能保证这种情况下请求被拒绝。）
   - 本地开发：`npx wrangler dev --var DEV_USER:you@local` 跳过校验。`DEV_USER` 绝不能设成线上变量。
   - 这就是未来多用户/会员的扩展点；不建 users 表、不写 auth 模块。真要做会员时只替换"取 user_id"这一处。
 - **模型**：`wrangler.jsonc` 中 `vars.MODEL = "deepseek/deepseek-v4-flash"`（2026-10-31 与 qwen3.7-flash、mistral-small-3.2 实测对比后选定：$0.091/M 入、$0.182/M 出，单词释义错误最少；1 万次段落翻译约 $1.1-1.3）。
-  - 请求固定带 `reasoning: { enabled: false }` 关闭 thinking。注意 `include_reasoning: false` / `exclude: true` 只隐藏不关闭，照样计费。
+  - 请求固定带 `reasoning: { enabled: false }` 关闭 thinking，以及 `provider: { sort: "latency", max_price: { prompt: 0.2, completion: 0.6 } }`：优先首字延迟最低的服务商，同时排除贵的（同一模型各家价格差 7 倍以上）。2026-10-31 实测首字延迟约 1s → 约 0.6s。注意 `include_reasoning: false` / `exclude: true` 只隐藏不关闭，照样计费。
   - 备选：`mistralai/mistral-small-3.2-24b-instruct`（无推理，$0.075/$0.20）。qwen 若返回 400（变成强制推理）就换 `vars.MODEL`。
   - `OPENROUTER_API_KEY` 用 `wrangler secret put`；本地开发用 `.dev.vars`（不入库）。
   - 原文上限 5000 字符，超出直接拒绝（成本兜底）。
 
 ## 翻译行为
-- **触发**：`paste` 事件立即翻；打字 debounce 500ms；`AbortController` 取消旧请求。无翻译按钮，回车 = 换行。
+- **触发**：`paste` 事件立即翻；打字 debounce 300ms；`AbortController` 取消旧请求。无翻译按钮，回车 = 换行。
 - **语言**：中、英、德、日。原文自动检测（不在 UI 显示检测结果）；目标语言下拉框，存 `localStorage`。
 - **原文 == 目标语言** → 润色模式：修正语法和拼写、表达更自然、保留原意。
 - **单词/短语**：最多 3 个常用义项，每行一个；德语名词带冠词+复数（如 `das Schloss, -¨er — 城堡；锁`），日语带读音。句子/片段只出译文，不加解释。
@@ -57,15 +57,8 @@ CREATE TABLE saved (
 - 只写一个测试：`node:test` 测 SSE 解析。
 - 实现时用几句中、德、日的例句实测模型质量。
 
-## 部署步骤（需用户本人在 Cloudflare 账号上操作）
-1. `npx wrangler d1 create retranslate`，把 id 填进 `wrangler.jsonc` 的 `database_id`
-2. `npx wrangler d1 migrations apply retranslate --remote`
-3. `npx wrangler secret put OPENROUTER_API_KEY`
-4. `npx wrangler deploy`
-5. Worker 设置页的 Domains & Routes：为 workers.dev 开启 Cloudflare Access（或在 Zero Trust 控制台建 Self-hosted 应用），会话时长设长一些（如 1 个月）
-6. 把团队名和应用的 AUD tag 填进 `wrangler.jsonc` 的 `ACCESS_TEAM` / `ACCESS_AUD`，再 `npx wrangler deploy` 一次。填之前所有 API 都返回 401（拒绝访问，不会放行）
-
-本地运行：`npm install` → `npx wrangler d1 migrations apply retranslate --local` → `npx wrangler dev --var DEV_USER:you@local`（key 自动从 `.env` 读取）。测试：`npm test`。
+## 部署与运维
+见 [`DEPLOY.md`](DEPLOY.md)（首次部署步骤、Access 配置、日常操作、排错）。
 
 ## 本次不做
 会员/付费、分页/搜索、显示检测到的语言、PWA、Tailwind、UI 上切换模型、Pi/Docker 部署。

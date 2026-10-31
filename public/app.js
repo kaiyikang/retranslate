@@ -116,7 +116,7 @@ function exportCsv() {
 src.addEventListener("input", (e) => {
   clearTimeout(timer);
   if (e.inputType === "insertFromPaste") translate();
-  else timer = setTimeout(translate, 500);
+  else timer = setTimeout(translate, 300);
 });
 lang.addEventListener("change", () => {
   localStorage.lang = lang.value;

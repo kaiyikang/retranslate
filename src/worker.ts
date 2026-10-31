@@ -43,6 +43,8 @@ export default {
           stream: true,
           temperature: 0,
           reasoning: { enabled: false }, // 真正关闭 thinking；exclude 只是隐藏，照样计费
+          // 优先首字延迟最低的服务商；同一模型各家价格差 7 倍以上，用 max_price（$/百万 token）排除贵的
+          provider: { sort: "latency", max_price: { prompt: 0.2, completion: 0.6 } },
           messages: [
             { role: "system", content: systemPrompt(LANGS[target]) },
             { role: "user", content: text },
@@ -89,6 +91,7 @@ export default {
 
 // 校验 Access 签发的 JWT，返回用户邮箱。不只信 Cf-Access-Authenticated-User-Email 头：
 // Access 一旦被误关，请求头可以伪造，校验签名才能保证失败时拒绝。
+// 不用 ctx.access：官方文档说配置了 Static Assets 时，路由不会把 ctx.access 传给 Worker。
 let certs: (JsonWebKey & { kid: string })[] = [];
 
 async function accessUser(req: Request, env: Env): Promise<string | null> {
@@ -111,7 +114,8 @@ async function accessUser(req: Request, env: Env): Promise<string | null> {
     const key = await crypto.subtle.importKey("jwk", jwk, alg, false, ["verify"]);
     const ok = await crypto.subtle.verify(alg, key, b64url(s), new TextEncoder().encode(`${h}.${p}`));
     const aud = [payload.aud].flat();
-    if (!ok || !aud.includes(env.ACCESS_AUD) || payload.exp * 1000 < Date.now()) return null;
+    const iss = `https://${env.ACCESS_TEAM}.cloudflareaccess.com`;
+    if (!ok || payload.iss !== iss || !aud.includes(env.ACCESS_AUD) || payload.exp * 1000 < Date.now()) return null;
     return payload.email ?? null;
   } catch {
     return null;
