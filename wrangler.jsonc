@@ -10,13 +10,13 @@
     {
       "binding": "DB",
       "database_name": "retranslate",
-      "database_id": "local" // 部署前替换成 `wrangler d1 create retranslate` 输出的 id
+      "database_id": "d1a31843-0a4f-45e6-96e6-0b3b37750f8e"
     }
   ],
   "vars": {
     "MODEL": "deepseek/deepseek-v4-flash",
     // 配好 Access 后填写：团队名（<team>.cloudflareaccess.com 的 <team>）和应用的 AUD tag
-    "ACCESS_TEAM": "",
-    "ACCESS_AUD": ""
+    "ACCESS_TEAM": "yikaikang",
+    "ACCESS_AUD": "706b766140879cd79ed5a808daeb2c65eb7e79fbfd96cbb14b2132c8c9c16edd"
   }
 }
