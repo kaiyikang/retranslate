@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>retranslate</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <!-- 一张对开纸：左原文、右译文，两边完全对称 -->
+      <section class="sheet">
+        <div class="head"><span class="hint">Auto-detect</span></div>
+        <div class="head out">
+          <select id="lang" aria-label="Target language">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+            <option value="ja">日本語</option>
+          </select>
+          <button id="copy" type="button" disabled>Copy</button>
+          <button id="save" class="primary" type="button" title="⌘S save, ⌘⇧S export all" disabled>Save</button>
+        </div>
+        <textarea id="src" class="box" placeholder="Type or paste text" spellcheck="false" autofocus></textarea>
+        <div id="dst" class="box out" aria-live="polite"></div>
+      </section>
+      <ul id="saved"></ul>
+    </main>
+    <template id="item">
+      <li>
+        <div class="s"></div>
+        <div class="t"></div>
+        <div class="act">
+          <button class="copy" type="button">Copy</button>
+          <button class="del" type="button">Delete</button>
+        </div>
+      </li>
+    </template>
+  </body>
+</html>

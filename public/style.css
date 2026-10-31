@@ -1,0 +1,143 @@
+:root {
+  color-scheme: light dark;
+  --page: #eceef2;
+  --paper: #ffffff;
+  --tint: #f5f5fb; /* 译文面，比原文面略带一点色 */
+  --ink: #1b1e26;
+  --muted: #6b7180;
+  --line: #dcdfe6;
+  --accent: #5b5bd6;
+  --on-accent: #ffffff;
+  --error: #c4213a;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans", "Noto Sans CJK SC", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #15171c;
+    --paper: #1d2027;
+    --tint: #22242f;
+    --ink: #e7e8ee;
+    --muted: #9095a3;
+    --line: #2f323c;
+    --accent: #8b8cf0;
+    --on-accent: #15171c;
+    --error: #ff7a8a;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); }
+main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 48px; }
+
+/* ---- 对开纸 ---- */
+.sheet {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.sheet > * { min-width: 0; }
+.sheet .out { background: var(--tint); border-left: 1px solid var(--line); }
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
+  padding: 0 12px 0 20px;
+}
+.hint { color: var(--muted); }
+#lang { margin-right: auto; }
+
+.box {
+  width: 100%;
+  height: 33vh;
+  min-height: 150px;
+  margin: 0;
+  padding: 4px 20px 20px;
+  overflow: auto;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1.6;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: none;
+}
+#src { background: var(--paper); }
+#src:focus { outline: none; }
+.sheet:has(#src:focus-visible) { border-color: var(--accent); }
+#src::placeholder, #dst:empty:not(.busy)::before { color: var(--muted); opacity: 0.6; }
+#dst:empty:not(.busy)::before { content: "Translation"; }
+#dst.error { color: var(--error); font-size: 15px; }
+
+/* 流式输出时的光标，唯一的动效 */
+#dst.busy::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #dst.busy::after { animation: none; } }
+
+/* ---- 控件 ---- */
+button, select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+select { padding-left: 0; font-weight: 600; }
+button:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+button:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
+button.primary:not(:disabled) { background: var(--accent); color: var(--on-accent); }
+button.primary:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 85%, var(--ink)); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- 保存列表：沿用对开的左右两栏 ---- */
+#saved { list-style: none; margin: 24px 0 0; padding: 0; }
+#saved:empty::before {
+  content: "Saved translations appear here. Press ⌘S to save.";
+  display: block;
+  padding: 0 20px;
+  color: var(--muted);
+}
+#saved li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--line);
+}
+#saved .s, #saved .t {
+  padding: 14px 20px;
+  font-size: 15px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#saved .t { color: var(--muted); padding-right: 128px; }
+#saved .act {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  opacity: 0;
+}
+#saved li:hover .act, #saved li:focus-within .act { opacity: 1; }
+@media (hover: none) { #saved .act { opacity: 1; } }
+
+/* ---- 窄屏：上下堆叠，顺序为 输入框 → 工具栏 → 译文 ---- */
+@media (max-width: 700px) {
+  main { padding: 12px 12px 32px; }
+  .sheet { grid-template-columns: 1fr; }
+  .sheet > .head:first-child { display: none; }
+  #src { order: -1; height: 23vh; padding-top: 16px; }
+  .box { height: 23vh; min-height: 110px; }
+  .sheet .out { border-left: 0; }
+  .head.out { border-top: 1px solid var(--line); }
+  #saved li { grid-template-columns: 1fr; }
+  #saved .s { padding-bottom: 0; padding-right: 128px; }
+  #saved .t { padding-top: 4px; padding-right: 20px; }
+}

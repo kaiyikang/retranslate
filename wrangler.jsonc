@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "retranslate",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public" },
+  // 只保留 workers.dev 一个入口，方便用 Access 整体挡住
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "retranslate",
+      "database_id": "local" // 部署前替换成 `wrangler d1 create retranslate` 输出的 id
+    }
+  ],
+  "vars": {
+    "MODEL": "deepseek/deepseek-v4-flash",
+    // 配好 Access 后填写：团队名（<team>.cloudflareaccess.com 的 <team>）和应用的 AUD tag
+    "ACCESS_TEAM": "",
+    "ACCESS_AUD": ""
+  }
+}

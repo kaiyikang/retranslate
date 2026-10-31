@@ -1,17 +1,7 @@
-# gitignore template for LangChain products, e.g., LangGraph, LangSmith
-# website: https://www.langchain.com/
-# website: https://www.langchain.com/langgraph
-
-# LangGraph
-.langgraph_api/
-
-# Docs reference dump, not project source
-llms.txt
-
-# uv virtual environment
-.venv/
-uv.lock
-.python-version
+node_modules/
+.wrangler/
+worker-configuration.d.ts
 
 # secrets
 .env
+.dev.vars
