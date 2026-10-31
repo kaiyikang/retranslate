@@ -4,6 +4,7 @@ const src = $("src"), dst = $("dst"), lang = $("lang"), saveBtn = $("save"), cop
 lang.value = localStorage.lang ?? "zh";
 let ctrl, timer, streaming = false, rows = [], inflight;
 const DEBOUNCE = 800; // 每次请求约 200 token 的固定 prompt 开销，太短会让打字时请求成倍增加
+const DELETE_DEBOUNCE = 2000; // 删字多半是为了重打，删到一半的句子不值得翻译
 const cache = new Map(); // ponytail: 会话内不清理，单页面几百条没问题
 
 function refresh() {
@@ -127,7 +128,7 @@ src.addEventListener("input", (e) => {
   clearTimeout(timer);
   if (e.isComposing) return; // 输入法拼写中（拼音、假名），等 compositionend 再翻
   if (e.inputType === "insertFromPaste") translate();
-  else timer = setTimeout(translate, DEBOUNCE);
+  else timer = setTimeout(translate, e.inputType.startsWith("delete") ? DELETE_DEBOUNCE : DEBOUNCE);
 });
 src.addEventListener("compositionend", () => {
   clearTimeout(timer);
