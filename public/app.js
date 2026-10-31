@@ -2,7 +2,9 @@ const $ = (id) => document.getElementById(id);
 const src = $("src"), dst = $("dst"), lang = $("lang"), saveBtn = $("save"), copyBtn = $("copy"), list = $("saved");
 
 lang.value = localStorage.lang ?? "zh";
-let ctrl, timer, streaming = false, rows = [];
+let ctrl, timer, streaming = false, rows = [], inflight;
+const DEBOUNCE = 800; // 每次请求约 200 token 的固定 prompt 开销，太短会让打字时请求成倍增加
+const cache = new Map(); // ponytail: 会话内不清理，单页面几百条没问题
 
 function refresh() {
   const hasOut = dst.textContent !== "" && !dst.classList.contains("error");
@@ -26,13 +28,20 @@ async function api(path, method = "GET", body) {
 
 async function translate() {
   clearTimeout(timer);
+  const text = src.value.trim();
+  const key = `${lang.value}\n${text}`;
+  if (streaming && key === inflight) return; // 内容没变（比如打了空格又删掉），让当前请求继续
   ctrl?.abort();
   dst.textContent = "";
   dst.classList.remove("error");
   streaming = false;
-  const text = src.value;
-  if (!text.trim()) return refresh();
+  if (!text) return refresh();
+  if (cache.has(key)) {
+    dst.textContent = cache.get(key);
+    return refresh();
+  }
 
+  inflight = key;
   const c = (ctrl = new AbortController());
   streaming = true;
   refresh();
@@ -50,6 +59,7 @@ async function translate() {
       if (done) break;
       dst.textContent += value;
     }
+    cache.set(key, dst.textContent);
   } catch (e) {
     if (c.signal.aborted) return;
     // Access 会话过期时请求被重定向到登录页，fetch 会抛 TypeError
@@ -115,8 +125,13 @@ function exportCsv() {
 
 src.addEventListener("input", (e) => {
   clearTimeout(timer);
+  if (e.isComposing) return; // 输入法拼写中（拼音、假名），等 compositionend 再翻
   if (e.inputType === "insertFromPaste") translate();
-  else timer = setTimeout(translate, 300);
+  else timer = setTimeout(translate, DEBOUNCE);
+});
+src.addEventListener("compositionend", () => {
+  clearTimeout(timer);
+  timer = setTimeout(translate, DEBOUNCE);
 });
 lang.addEventListener("change", () => {
   localStorage.lang = lang.value;

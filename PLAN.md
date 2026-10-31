@@ -15,13 +15,13 @@ DeepL 简化版，单页面、快。典型场景：游戏中 Cmd+Tab 切过来 �
   - 本地开发：`npx wrangler dev --var DEV_USER:you@local` 跳过校验。`DEV_USER` 绝不能设成线上变量。
   - 这就是未来多用户/会员的扩展点；不建 users 表、不写 auth 模块。真要做会员时只替换"取 user_id"这一处。
 - **模型**：`wrangler.jsonc` 中 `vars.MODEL = "deepseek/deepseek-v4-flash"`（2026-10-31 与 qwen3.7-flash、mistral-small-3.2 实测对比后选定：$0.091/M 入、$0.182/M 出，单词释义错误最少；1 万次段落翻译约 $1.1-1.3）。
-  - 请求固定带 `reasoning: { enabled: false }` 关闭 thinking，以及 `provider: { sort: "latency", max_price: { prompt: 0.2, completion: 0.6 } }`：优先首字延迟最低的服务商，同时排除贵的（同一模型各家价格差 7 倍以上）。2026-10-31 实测首字延迟约 1s → 约 0.6s。注意 `include_reasoning: false` / `exclude: true` 只隐藏不关闭，照样计费。
+  - 请求固定带 `reasoning: { enabled: false }` 关闭 thinking，以及 `provider: { sort: "latency", max_price: { prompt: 0.1, completion: 0.2 } }`：优先首字延迟最低的服务商，同时排除贵的（同一模型各家价格差 7 倍以上；上限设为 0.2/0.6 时实际路由到了 Crusoe，$0.14/$0.28，收紧后走 DeepInfra，$0.09/$0.18，延迟基本不变）。2026-10-31 实测首字延迟约 1s → 约 0.6s。注意 `include_reasoning: false` / `exclude: true` 只隐藏不关闭，照样计费。
   - 备选：`mistralai/mistral-small-3.2-24b-instruct`（无推理，$0.075/$0.20）。qwen 若返回 400（变成强制推理）就换 `vars.MODEL`。
   - `OPENROUTER_API_KEY` 用 `wrangler secret put`；本地开发用 `.dev.vars`（不入库）。
   - 原文上限 5000 字符，超出直接拒绝（成本兜底）。
 
 ## 翻译行为
-- **触发**：`paste` 事件立即翻；打字 debounce 300ms；`AbortController` 取消旧请求。无翻译按钮，回车 = 换行。
+- **触发**：`paste` 事件立即翻；打字 debounce 800ms；输入法拼写中（`isComposing`）不触发，`compositionend` 后再计时；同一会话内相同的原文和目标语言直接走前端缓存，内容没变时不打断正在进行的请求；`AbortController` 取消旧请求。（2026-10-31：300ms 时边想边打一个长单词会发出十几次请求，每次请求约有 200 token 的固定 prompt 开销，费用涨了数倍，因此改成 800ms 并加了缓存。）无翻译按钮，回车 = 换行。
 - **语言**：中、英、德、日。原文自动检测（不在 UI 显示检测结果）；目标语言下拉框，存 `localStorage`。
 - **原文 == 目标语言** → 润色模式：修正语法和拼写、表达更自然、保留原意。
 - **单词/短语**：最多 3 个常用义项，每行一个；德语名词带冠词+复数（如 `das Schloss, -¨er — 城堡；锁`），日语带读音。句子/片段只出译文，不加解释。
