@@ -149,6 +149,12 @@ document.addEventListener("keydown", (e) => {
     e.shiftKey ? exportCsv() : save();
   }
 });
+// 手动选中复制时只放纯文本，否则 Teams 之类会连页面字号、颜色一起粘贴
+document.addEventListener("copy", (e) => {
+  if (e.target === src) return; // textarea 复制本来就是纯文本
+  e.clipboardData.setData("text/plain", getSelection().toString());
+  e.preventDefault();
+});
 saveBtn.onclick = save;
 copyBtn.onclick = () => copy(dst.textContent, copyBtn);
 
