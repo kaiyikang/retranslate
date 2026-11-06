@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 const src = $("src"), dst = $("dst"), lang = $("lang"), saveBtn = $("save"), copyBtn = $("copy"), list = $("saved");
 
 lang.value = localStorage.lang ?? "zh";
+lang.value ||= "zh"; // 本地存的语言已下线（如 ja）时回退
 let ctrl, timer, streaming = false, rows = [], inflight;
 const DEBOUNCE = 1200; // 每次请求约 200 token 的固定 prompt 开销，太短会让打字时请求成倍增加
 const DELETE_DEBOUNCE = 3000; // 删字多半是为了重打，删到一半的句子不值得翻译
