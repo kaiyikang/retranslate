@@ -43,7 +43,7 @@ export default {
           model: env.MODEL,
           stream: true,
           temperature: 0,
-          reasoning: { enabled: false }, // 真正关闭 thinking；exclude 只是隐藏，照样计费
+          reasoning: { enabled: true }, // 真正关闭 thinking；exclude 只是隐藏，照样计费
           // 优先首字延迟最低的服务商；同一模型各家价格差 7 倍以上，用 max_price（$/百万 token）排除贵的
           provider: { sort: "latency", max_price: { prompt: 0.1, completion: 0.2 } },
           messages: [
