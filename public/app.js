@@ -1,18 +1,24 @@
 const $ = (id) => document.getElementById(id);
-const src = $("src"), dst = $("dst"), lang = $("lang"), saveBtn = $("save"), copyBtn = $("copy"), list = $("saved");
+const src = $("src"), dst = $("dst"), lang = $("lang"), saveBtn = $("save"), copyBtn = $("copy"), polishBtn = $("polish"), list = $("saved");
 
 lang.value = localStorage.lang ?? "zh";
 lang.value ||= "zh"; // 本地存的语言已下线（如 ja）时回退
 let ctrl, timer, streaming = false, rows = [], inflight;
+let shown = null; // 当前显示的是哪次翻译的结果：{ key, text, target }，出错或进行中为 null
 const DEBOUNCE = 1200; // 每次请求约 200 token 的固定 prompt 开销，太短会让打字时请求成倍增加
 const DELETE_DEBOUNCE = 3000; // 删字多半是为了重打，删到一半的句子不值得翻译
 const cache = new Map(); // ponytail: 会话内不清理，单页面几百条没问题
+const polishCache = new Map(); // 同一个 key，对应「地道」润色后的版本
 
 function refresh() {
   const hasOut = dst.textContent !== "" && !dst.classList.contains("error");
   copyBtn.disabled = !hasOut;
   saveBtn.disabled = streaming || !hasOut || !src.value.trim();
   dst.classList.toggle("busy", streaming);
+  const polished = dst.classList.contains("polished");
+  polishBtn.disabled = streaming || !hasOut || !shown;
+  polishBtn.classList.toggle("working", dst.classList.contains("polishing"));
+  polishBtn.setAttribute("aria-pressed", polished);
 }
 
 function flash(btn, ok = true) {
@@ -33,13 +39,16 @@ async function translate() {
   const text = src.value.trim();
   const key = `${lang.value}\n${text}`;
   if (streaming && key === inflight) return; // 内容没变（比如打了空格又删掉），让当前请求继续
+  if (!streaming && shown?.key === key) return; // 同上；也避免把已润色的结果冲掉
   ctrl?.abort();
   dst.textContent = "";
-  dst.classList.remove("error");
+  dst.classList.remove("error", "polished", "polishing");
+  shown = null;
   streaming = false;
   if (!text) return refresh();
   if (cache.has(key)) {
     dst.textContent = cache.get(key);
+    shown = { key, text, target: lang.value };
     return refresh();
   }
 
@@ -62,12 +71,61 @@ async function translate() {
       dst.textContent += value;
     }
     cache.set(key, dst.textContent);
+    shown = { key, text, target: lang.value };
   } catch (e) {
     if (c.signal.aborted) return;
     // Access 会话过期时请求被重定向到登录页，fetch 会抛 TypeError
     dst.textContent = e instanceof TypeError ? "Request failed. Your session may have expired, reload the page." : e.message;
     dst.classList.add("error");
   }
+  streaming = false;
+  refresh();
+}
+
+// 「地道」：用原文 + 当前译文让模型重写并检查逻辑；再点一次在普通译文和润色版之间切换
+async function polish() {
+  if (polishBtn.disabled) return;
+  const { key, text, target } = shown;
+  if (dst.classList.contains("polished")) {
+    dst.textContent = cache.get(key);
+    dst.classList.remove("polished");
+    return refresh();
+  }
+  if (polishCache.has(key)) {
+    dst.textContent = polishCache.get(key);
+    dst.classList.add("polished");
+    return refresh();
+  }
+
+  const plain = cache.get(key);
+  const c = (ctrl = new AbortController());
+  streaming = true;
+  dst.classList.add("polishing"); // 保留旧译文，等第一个字到了再替换
+  refresh();
+  let out = "";
+  try {
+    const res = await fetch("/api/polish", {
+      method: "POST",
+      body: JSON.stringify({ text, draft: plain, target }),
+      signal: c.signal,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (c !== ctrl) return; // 输入变了，translate() 已经接管界面
+      if (done) break;
+      dst.textContent = out += value;
+    }
+    if (!out.trim()) throw new Error("empty");
+    polishCache.set(key, out);
+    dst.classList.add("polished");
+  } catch (e) {
+    if (c.signal.aborted) return;
+    dst.textContent = plain;
+    flash(polishBtn, false);
+  }
+  dst.classList.remove("polishing");
   streaming = false;
   refresh();
 }
@@ -157,6 +215,7 @@ document.addEventListener("copy", (e) => {
   e.preventDefault();
 });
 saveBtn.onclick = save;
+polishBtn.onclick = polish;
 copyBtn.onclick = () => copy(dst.textContent, copyBtn);
 
 load();

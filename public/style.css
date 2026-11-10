@@ -9,6 +9,7 @@
   --accent: #5b5bd6;
   --on-accent: #ffffff;
   --error: #c4213a;
+  --rainbow: linear-gradient(90deg, #ff2d55, #ff9500, #ffe600, #34c759, #00c7ff, #5856d6, #ff2d95, #ff2d55);
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans", "Noto Sans CJK SC", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -76,9 +77,50 @@ main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 48px; }
 #dst.error { color: var(--error); font-size: 15px; }
 
 /* 流式输出时的光标，唯一的动效 */
-#dst.busy::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; }
+#dst.busy:not(.polishing)::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { #dst.busy::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #dst.busy:not(.polishing)::after { animation: none; } }
+
+/* ---- 「地道」：彩虹 ---- */
+@keyframes flow { to { background-position: 200% 0, 0 0; } }
+@keyframes ring {
+  0%, 100% { outline-color: #ff2d55; box-shadow: inset 0 0 22px -6px #ff2d55; }
+  17% { outline-color: #ff9500; box-shadow: inset 0 0 22px -6px #ff9500; }
+  33% { outline-color: #ffe600; box-shadow: inset 0 0 22px -6px #ffe600; }
+  50% { outline-color: #34c759; box-shadow: inset 0 0 22px -6px #34c759; }
+  67% { outline-color: #00c7ff; box-shadow: inset 0 0 22px -6px #00c7ff; }
+  83% { outline-color: #b14dff; box-shadow: inset 0 0 22px -6px #b14dff; }
+}
+/* 等待：旧译文变流动彩虹字，外加快速变色的边框 */
+#dst.polishing {
+  color: transparent;
+  background-image: var(--rainbow), linear-gradient(var(--tint), var(--tint));
+  background-size: 200% 100%, auto;
+  background-clip: text, border-box;
+  -webkit-background-clip: text, border-box;
+  outline: 3px solid #ff2d55;
+  outline-offset: -3px;
+  animation: flow 1.2s linear infinite, ring 2s linear infinite;
+}
+/* 完成：文字恢复正常，只留一圈慢速流动的彩虹边框 */
+#dst.polished {
+  outline: 3px solid #ff2d55;
+  outline-offset: -3px;
+  animation: ring 6s linear infinite;
+}
+button.polish { font-weight: 700; }
+button.polish[aria-pressed="true"]:not(:disabled) { color: var(--accent); }
+button.polish:not(:disabled):hover, button.polish.working {
+  color: #fff;
+  opacity: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  background: var(--rainbow) 0 0 / 200% 100%;
+  box-shadow: 0 0 10px #ff2d9588, 0 0 22px #00c7ff66;
+  animation: flow 1.1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  #dst.polishing, #dst.polished, button.polish:not(:disabled):hover, button.polish.working { animation: none; }
+}
 
 /* ---- 控件 ---- */
 button, select {
