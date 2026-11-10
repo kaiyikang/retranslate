@@ -4,7 +4,7 @@ const src = $("src"), dst = $("dst"), lang = $("lang"), saveBtn = $("save"), cop
 lang.value = localStorage.lang ?? "zh";
 lang.value ||= "zh"; // 本地存的语言已下线（如 ja）时回退
 let ctrl, timer, streaming = false, rows = [], inflight;
-let shown = null; // 当前显示的是哪次翻译的结果：{ key, text, target }，出错或进行中为 null
+let shown = null; // 当前显示的是哪次翻译的结果：{ key, text }，出错或进行中为 null
 const DEBOUNCE = 1200; // 每次请求约 200 token 的固定 prompt 开销，太短会让打字时请求成倍增加
 const DELETE_DEBOUNCE = 3000; // 删字多半是为了重打，删到一半的句子不值得翻译
 const cache = new Map(); // ponytail: 会话内不清理，单页面几百条没问题
@@ -13,9 +13,9 @@ const polishCache = new Map(); // 同一个 key，对应「地道」润色后的
 function refresh() {
   const hasOut = dst.textContent !== "" && !dst.classList.contains("error");
   copyBtn.disabled = !hasOut;
-  saveBtn.disabled = streaming || !hasOut || !src.value.trim();
-  dst.classList.toggle("busy", streaming);
   const polished = dst.classList.contains("polished");
+  saveBtn.disabled = streaming || !hasOut || !src.value.trim() || polished; // 润色版语言和目标语言不一致，不能存
+  dst.classList.toggle("busy", streaming);
   polishBtn.disabled = streaming || !hasOut || !shown;
   polishBtn.classList.toggle("working", dst.classList.contains("polishing"));
   polishBtn.setAttribute("aria-pressed", polished);
@@ -48,7 +48,7 @@ async function translate() {
   if (!text) return refresh();
   if (cache.has(key)) {
     dst.textContent = cache.get(key);
-    shown = { key, text, target: lang.value };
+    shown = { key, text };
     return refresh();
   }
 
@@ -71,7 +71,7 @@ async function translate() {
       dst.textContent += value;
     }
     cache.set(key, dst.textContent);
-    shown = { key, text, target: lang.value };
+    shown = { key, text };
   } catch (e) {
     if (c.signal.aborted) return;
     // Access 会话过期时请求被重定向到登录页，fetch 会抛 TypeError
@@ -82,10 +82,10 @@ async function translate() {
   refresh();
 }
 
-// 「地道」：用原文 + 当前译文让模型重写并检查逻辑；再点一次在普通译文和润色版之间切换
+// 「地道」：用原文所在的语言重写并检查逻辑（不看目标语言，也不是翻译）；再点一次在普通译文和润色版之间切换
 async function polish() {
   if (polishBtn.disabled) return;
-  const { key, text, target } = shown;
+  const { key, text } = shown;
   if (dst.classList.contains("polished")) {
     dst.textContent = cache.get(key);
     dst.classList.remove("polished");
@@ -106,7 +106,7 @@ async function polish() {
   try {
     const res = await fetch("/api/polish", {
       method: "POST",
-      body: JSON.stringify({ text, draft: plain, target }),
+      body: JSON.stringify({ text }),
       signal: c.signal,
     });
     if (!res.ok) throw new Error(await res.text());
