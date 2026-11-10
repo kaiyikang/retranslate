@@ -102,14 +102,9 @@ main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 48px; }
   outline-offset: -3px;
   animation: flow 1.2s linear infinite, ring 2s linear infinite;
 }
-/* 完成：文字恢复正常，只留一圈慢速流动的彩虹边框 */
-#dst.polished {
-  outline: 3px solid #ff2d55;
-  outline-offset: -3px;
-  animation: ring 6s linear infinite;
-}
 button.polish { font-weight: 700; }
-button.polish[aria-pressed="true"]:not(:disabled) { color: var(--accent); }
+/* 完成后译文区恢复原样，是否润色只靠按钮高亮区分 */
+button.polish[aria-pressed="true"]:not(:disabled) { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
 button.polish:not(:disabled):hover, button.polish.working {
   color: #fff;
   opacity: 1;
@@ -119,7 +114,7 @@ button.polish:not(:disabled):hover, button.polish.working {
   animation: flow 1.1s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  #dst.polishing, #dst.polished, button.polish:not(:disabled):hover, button.polish.working { animation: none; }
+  #dst.polishing, button.polish:not(:disabled):hover, button.polish.working { animation: none; }
 }
 
 /* ---- 控件 ---- */
